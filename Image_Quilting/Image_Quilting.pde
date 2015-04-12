@@ -34,7 +34,7 @@ boolean debug = true;
 
 // Declare test images - they are loaded in setup()
 PImage grass, grass2, grass3, mars, mars2, water, apples, muddywater, gravel, gravel2, gravel3;
-PImage crackedmud1, crackedmud2;
+PImage crackedmud1, crackedmud2, pinkflowers, darkgrass;
 
 // Textures to use for the run of the sketch
 // ASSIGN THEM BELOW!!!!! in the setup() function below (Processing requirement)
@@ -97,6 +97,8 @@ void setup() {
   gravel3    = loadImage("gravel3.png");
   crackedmud1= loadImage("crackedmud1.png");
   crackedmud2= loadImage("crackedmud2.png");
+  pinkflowers= loadImage("pinkflowers.png");
+  darkgrass  = loadImage("darkgrass.png");
 
   // CHANGE THESE VALUES to represent the textures you want to quilt
   // Examples:
@@ -104,8 +106,8 @@ void setup() {
   // Set texture1 to gravel and texture2 to gravel
   // For a crazy image, Set texture1 to mars and texture2 to water 
   // and set the error tolerance (above) to 0.5 or so.
-  texture1 = gravel3;
-  texture2 = gravel3;
+  texture1 = pinkflowers;
+  texture2 = pinkflowers;
 
   // Don't change anything else in setup()
   columns = 1 + width  / (sampleSize - sampleOverlap);
