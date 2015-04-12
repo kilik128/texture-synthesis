@@ -2,4 +2,12 @@
 
 Well... ok, just image quilting for now. :) 
 
-Code is in Processing.
+Image quilting was described by Effros and Freeman in a 2001 paper that you can find [on this page](http://www.eecs.berkeley.edu/~efros/).
+
+Basically, starting with a small image, you can quilt samples of it together in a clever way such as to create a large image that does not appear to be made from tiles or even from repeated sections of a small image.  For example, starting with this image of gravel:
+
+![Image_Quilting/data/gravel3.png](Image_Quilting/data/gravel3.png)
+
+We can generate this image:
+
+![img/biggravel.png](img/biggravel.png)
