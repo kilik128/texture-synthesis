@@ -11,3 +11,21 @@ Basically, starting with a small image, you can quilt samples of it together in 
 We can generate this image:
 
 ![img/biggravel.png](img/biggravel.png)
+
+More examples...
+
+source image:
+
+![Image_Quilting/data/pinkflowers.png](Image_Quilting/data/pinkflowers.png)
+
+result:
+
+![img/largepink.png](img/largepink.png)
+
+source image:
+
+![Image_Quilting/data/darkgrass.png](Image_Quilting/data/darkgrass.png)
+
+result:
+
+![img/largedarkgrass.png](img/largedarkgrass.png)
