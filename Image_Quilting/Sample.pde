@@ -158,7 +158,7 @@ class Sample {
   // This grabs the portion of the screen that corresponds to where 
   // this sample needs to quilt on the left. As an internal representation
   // of the overlap area, it is used to create the graph that we use
-  // to run Dykstra's algorithm to determine the best cut.
+  // to run the A-star algorithm to determine the best cut.
 
   void createOverlappingLeft() {
     overlappingLeft = createImage(sampleOverlap, sample.height, RGB);
