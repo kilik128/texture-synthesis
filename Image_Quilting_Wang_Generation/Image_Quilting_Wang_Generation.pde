@@ -59,10 +59,21 @@ int sampleOverlap    = sampleSize / overlapFactor; // Don't change this.
 float overlapErrorTolerance = 0.15;
 
 
-// To make Wang tiles after quilting, press W. How many do you want in the set?
-// Only supports 9, 12, and 18
+// To make Wang tiles after quilting
 int wangColorsTopBottom = 3;
 int wangColorsLeftRight = 3;
+
+// If this is true, the Wang tile algorithm will create the maximum
+// number of tile variations for each valid placement. If this is set
+// to false, then the next variable down will be used to determine 
+// how many tiles are created per valid placement.
+boolean maximizeWangSet = false;
+
+// With Wang tiles, we have to create more than one tile for
+// each left/top color combination. How many variations do we want?
+// This should be a minimum of 2.
+int maxWangVariationsPerLeftTopTile = 3;
+
 
 // What dimension, per side, should the Wang tiles be?
 int wangTileDimension = 64;
@@ -87,9 +98,11 @@ int column, row;
 int xOffset, yOffset, offsetAmount;
 
 // For tracking progress; don't change.
-boolean complete      = false;
-boolean grabbedFinal  = false;
-boolean makingWang    = false;
+boolean complete        = false;
+boolean grabbedFinal    = false;
+boolean makingWang      = false;
+boolean iterateWang     = false;
+boolean tilesAllCreated = false;
 
 // For tracking Wang tile creation
 WangTileMaker wtm;
@@ -200,7 +213,7 @@ void makeQuiltedImage() {
       println("Finished!");
 
       // Grab the final image and save it
-      frameRate(5);
+
       finalImage = createImage(width, height, RGB);
       finalImage = get(0, 0, width, height);
       grabbedFinal = true;
@@ -220,7 +233,7 @@ void showDebugLinesWhenFinished() {
   ////////////////////////////////////////////////
 
 
-  if (grabbedFinal == true) {
+  if (grabbedFinal == true && makingWang == false && iterateWang == false) {
     background(bgColor);
     image(finalImage, 0, 0);
     fill(255, 0, 0);
@@ -238,8 +251,23 @@ void makeWangTiles() {
   if (makingWang) {
     wtm         = new WangTileMaker(finalImage);
     wtm.makeWangTileSet(wangColorsTopBottom, wangColorsLeftRight);
-    noLoop();
+    iterateWang = true;
+    makingWang  = false;
   }
+  
+  /* This is a bit of a hack required due to how we're abstracting the for loop out of draw().
+     Basically, we need to repaint the canvas for each Wang tile we create due to how we
+     implemented the image quilting.
+  */
+  
+  if (iterateWang){
+    wtm.createImageFromTile();
+   
+   if(tilesAllCreated){
+      noLoop();
+   } 
+  }
+  
 }
 
 void keyPressed() {
