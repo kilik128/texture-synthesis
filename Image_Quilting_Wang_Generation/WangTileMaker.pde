@@ -1,18 +1,29 @@
 class WangTileMaker {
-  PImage sourceImage;
+  PImage sourceImage, safeRotatedSource;
   int leftRightNum, topBottomNum;
   ArrayList<WangColorSample> colorSamplesLR;
   ArrayList<WangColorSample> colorSamplesTB;
 
   ArrayList<WangTile> finalTiles;
 
-  ArrayList<Triangle> noGoTriangles;
   ArrayList<String> colors;
 
   int tilesCreated = 0;
 
+  WangTile workingTile;
+  boolean placeLeft, placeTop, placeBottom, placeRight;
+
   WangTileMaker(PImage _sourceImage) {
     sourceImage = _sourceImage;
+
+    // Used for tracking which tile we're trying to create
+    workingTile = null;
+
+    // Used for looping through and stitching colors
+    placeLeft   = false;
+    placeTop    = false;
+    placeBottom = false;
+    placeRight  = false;
 
     // This isn't necessary and slows things down but is here for
     // explanatory purposes. We can use colors as sides when debugging.
@@ -60,24 +71,10 @@ class WangTileMaker {
     println("Making Wang tile set with " + _numTopBottomColors + " on the top and bottom and " + _numLeftRightColors + " on the left and right.");
     leftRightNum = _numLeftRightColors;
     topBottomNum = _numTopBottomColors;
-
-    displayRotatedSource();
-    createNoGoTriangles();
-    makeWangColorSamples();
-
-    // Just for demo purposes...
-    showWangColorSamples();
-
-
-    establishWangTileObjects();
-
-    // Loop of
-    //    Quilt
-    //    Rotate
-    //    Make tile & save it
   }
 
   void displayRotatedSource() {
+    println("WangTileMaker.displayRotatedSource()");
     background(0);
     pushMatrix();
     translate(width/2, -height*sqrt(2)*(1/8.0));
@@ -86,71 +83,31 @@ class WangTileMaker {
     popMatrix();
   }
 
-  void createNoGoTriangles() {
-    noGoTriangles = new ArrayList<Triangle>();
-
-    Triangle t1 = new Triangle(0, 0, width*(1/3.0), 0, 0, height*(1/3.0));
-    noGoTriangles.add(t1);
-
-    Triangle t2 = new Triangle(width*(2/3.0), 0, width, 0, width, height*(1/3.0));
-    noGoTriangles.add(t2);
-
-    Triangle t3 = new Triangle(width, height*(2/3.0), width, height, width*(2/3.0), height);
-    noGoTriangles.add(t3);
-
-    Triangle t4 = new Triangle(0, height*(2/3.0), width*(1/3.0), height, 0, height);
-    noGoTriangles.add(t4);
-
-    t1.display();
-    t2.display();
-    t3.display();
-    t4.display();
+  void getSafeRotatedSource() {
+    println("WangTileMaker.getSafeRotatedSource()");
+    safeRotatedSource = get(width * 1/6, height * 1/6, width * 2/3, height * 2/3);
   }
 
   void makeWangColorSamples() {
+    println("WangTileMaker.makeWangColorSamples()");
+
     colorSamplesLR = new ArrayList<WangColorSample>();
     colorSamplesTB = new ArrayList<WangColorSample>();
 
     for (int i = 0; i < leftRightNum; i++) {
-      WangColorSample wcs = null;
-      boolean goodSample = false;
-
-      while (!goodSample) {
-        PVector p;
-        int randX  = (int)random(width -  (int)(wangTileDimension*1.5));
-        int randY  = (int)random(height - (int)(wangTileDimension*1.5));
-        p          = new PVector(randX, randY);
-        wcs        = new WangColorSample(p, (int)(wangTileDimension*1.5), colors.get(i));
-        goodSample = wcs.allowed(noGoTriangles);
-      }
-
-      // Sample is good, so let's save it as a PImage
-      wcs.createSample();
-
+      WangColorSample wcs = new WangColorSample(safeRotatedSource, colors.get(i), (int)(wangTileDimension*1.5));
       colorSamplesLR.add(wcs);
       println("LeftRight: " + wcs.colorname);
     }
 
+    // Strange indexing here is to get the appropriate color name
     for (int i = leftRightNum; i < (leftRightNum + topBottomNum); i++) {
-      WangColorSample wcs = null;
-      boolean goodSample  = false;
-
-      while (!goodSample) {
-        PVector p;
-        int randX  = (int)random(width -  (int)(wangTileDimension*1.5));
-        int randY  = (int)random(height - (int)(wangTileDimension*1.5));
-        p          = new PVector(randX, randY);
-        wcs        = new WangColorSample(p, (int)(wangTileDimension*1.5), colors.get(i));
-        goodSample = wcs.allowed(noGoTriangles);
-      }
-
-      // Sample is good, so let's save it as a PImage
-      wcs.createSample();
-
+      WangColorSample wcs = new WangColorSample(safeRotatedSource, colors.get(i), (int)(wangTileDimension*1.5));
       colorSamplesTB.add(wcs);
       println("TopBottom: " + wcs.colorname);
     }
   }
+
 
   // Just for explanatory purposes
   void showWangColorSamples() {
@@ -182,6 +139,7 @@ class WangTileMaker {
   }
 
   void establishWangTileObjects() {
+    println("establishWangTileObjects()");
     /* 
      Here we create partial tiles that have all possible combinations of left/top and right/bottom colors.
      For tiling, we're only really concerned that we have more than one of each left/top combination, since
@@ -242,24 +200,92 @@ class WangTileMaker {
         }
       }
     }
-
-    /* Print our final tiles to the console to see what we have. 
-     Keep in mind that we haven't generated the actual tile images yet.
-     */
-    for (WangTile wtf : finalTiles) {
-      println(wtf);
-    }
   }
 
-  void createImageFromTile() {
+  void stitchTile() {
     
-    
-    
-    // Track how many we have created and inform the main loop when we are done.
-    tilesCreated += 1;
+    // Check if we're done
     if (tilesCreated == finalTiles.size()) {
       tilesAllCreated = true;
       println("Tiles all created!");
+      return;
+    }
+    
+    // Initialize
+    if (null == workingTile) {
+      // Clear the background
+      background(0);
+
+      // Get a tile reference
+      workingTile = finalTiles.get(tilesCreated);
+      placeLeft   = true;
+      
+    } else if (null != workingTile && placeLeft == true){
+      // Move to the next tile.
+      background(0);
+      workingTile = finalTiles.get(tilesCreated);
+    }
+
+    if (placeLeft) {
+      println("placeLeft");
+      xOffset   = 0;
+      yOffset   = 0;
+      row    = 0;
+      column = 0;
+      
+      // Upper left doesn't need to stitch
+      workingTile.left.imageSample.createSample(xOffset,yOffset);
+      PImage l = workingTile.left.imageSample.sample;
+      image(l, xOffset, yOffset);
+      placeLeft = false;
+      placeTop  = true;
+      return;
+    }
+    
+    if (placeTop) {
+      println("placeTop");
+     xOffset = int(wangTileDimension*1.5) - sampleOverlap;
+     yOffset = 0;
+     row     = 0;
+     column  = 1;
+     
+     workingTile.top.imageSample.createSample(xOffset,yOffset);
+     workingTile.top.imageSample.placeTile(xOffset, yOffset);
+     placeTop    = false;
+     placeBottom = true;
+     return;
+    }
+    
+    if (placeBottom) {
+      println("placeBottom");
+     xOffset   = 0;
+     yOffset   = int(wangTileDimension*1.5) - sampleOverlap;
+     row    = 1;
+     column = 0;
+     
+     workingTile.bottom.imageSample.createSample(xOffset,yOffset);
+     workingTile.bottom.imageSample.placeTile(xOffset, yOffset);
+     placeBottom = false;
+     placeRight  = true;
+     return;
+    }
+    
+    if (placeRight) {
+      println("placeRight");
+     xOffset   = int(wangTileDimension*1.5) - sampleOverlap;
+     yOffset   = int(wangTileDimension*1.5) - sampleOverlap;
+     row    = 1;
+     column = 1;
+     
+     workingTile.right.imageSample.createSample(xOffset,yOffset);
+     workingTile.right.imageSample.placeTile(xOffset, yOffset);
+     placeRight = false;
+     placeLeft  = true;
+     
+     // PERFORM TILE CREATION HERE!
+     
+     tilesCreated += 1;
+     return;
     }
   }
 }

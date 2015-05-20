@@ -30,6 +30,7 @@
  */
 
 import java.util.PriorityQueue;
+import java.lang.reflect.Method;
 
 int canvasSize = 1000; // will be square
 
@@ -76,6 +77,7 @@ int maxWangVariationsPerLeftTopTile = 3;
 
 
 // What dimension, per side, should the Wang tiles be?
+// The Wang tiles will use the same overlap factor when quilted.
 int wangTileDimension = 64;
 
 
@@ -101,11 +103,15 @@ int xOffset, yOffset, offsetAmount;
 boolean complete        = false;
 boolean grabbedFinal    = false;
 boolean makingWang      = false;
+boolean clearingScreen  = false;
 boolean iterateWang     = false;
 boolean tilesAllCreated = false;
 
 // For tracking Wang tile creation
 WangTileMaker wtm;
+Class wangClass;
+ArrayList<Method> wangMethodChain;
+int wangMethodCounter = -1;
 
 // Keep the final image; don't change.
 PImage finalImage;
@@ -159,6 +165,8 @@ void setup() {
 void draw() {
   makeQuiltedImage();
   showDebugLinesWhenFinished();
+  clearScreen();
+  iterateWangImageCreation();
   makeWangTiles();
 }
 
@@ -236,7 +244,7 @@ void showDebugLinesWhenFinished() {
   if (grabbedFinal == true && makingWang == false && iterateWang == false) {
     background(bgColor);
     image(finalImage, 0, 0);
-    fill(255, 0, 0);
+    fill(255, 255, 255);
     noStroke();
     if (debug == true) {
       for (PVector v : debugLines) {
@@ -246,28 +254,80 @@ void showDebugLinesWhenFinished() {
   }
 }
 
+void clearScreen() {
+  if (clearingScreen) {
+    background(0);
+  }
+}
+
 void makeWangTiles() {
-  
+
   if (makingWang) {
-    wtm         = new WangTileMaker(finalImage);
-    wtm.makeWangTileSet(wangColorsTopBottom, wangColorsLeftRight);
-    iterateWang = true;
-    makingWang  = false;
+
+    // On the first pass through, establish the method chain we'll call to create the tiles.
+    if (wangMethodCounter == -1) {
+      println("\n\n================================ Making Wang Tiles =================================");
+      wtm         = new WangTileMaker(finalImage);
+      wangClass   = wtm.getClass();
+      wangMethodChain = new ArrayList<Method>();
+
+      try {
+        Method wang1 = wangClass.getDeclaredMethod("displayRotatedSource");
+        Method wang2 = wangClass.getDeclaredMethod("getSafeRotatedSource");
+        Method wang3 = wangClass.getDeclaredMethod("makeWangColorSamples");
+        // Method wang4 = wangClass.getDeclaredMethod("showWangColorSamples");
+        Method wang5 = wangClass.getDeclaredMethod("establishWangTileObjects");
+
+        wangMethodChain.add(wang1);
+        wangMethodChain.add(wang2);
+        wangMethodChain.add(wang3);
+        // wangMethodChain.add(wang4);
+        wangMethodChain.add(wang5);
+      }
+      catch(NoSuchMethodException e) {
+        println("Exception...\n");
+        e.printStackTrace();
+      }
+
+      wtm.makeWangTileSet(wangColorsTopBottom, wangColorsLeftRight);
+      wangMethodCounter += 1;
+      return;
+    } else if (wangMethodCounter < wangMethodChain.size()) {
+      // call methods
+      Method currentMethod = wangMethodChain.get(wangMethodCounter);
+      try {
+        currentMethod.invoke(wtm, null);
+        wangMethodCounter += 1;
+        noLoop();
+      }
+      catch (Exception e) {
+        println("Exception...\n");
+        e.printStackTrace();
+      }
+    }
+
+    // We're done iterating through the wang methods
+    if (wangMethodCounter == wangMethodChain.size()) {
+      iterateWang = true;
+      makingWang  = false;
+    }
   }
-  
+}
+
+void iterateWangImageCreation() {
   /* This is a bit of a hack required due to how we're abstracting the for loop out of draw().
-     Basically, we need to repaint the canvas for each Wang tile we create due to how we
-     implemented the image quilting.
-  */
-  
-  if (iterateWang){
-    wtm.createImageFromTile();
-   
-   if(tilesAllCreated){
+   Basically, we need to repaint the canvas for each Wang tile we create due to how we
+   implemented the image quilting.
+   */
+
+  if (iterateWang) {
+    wtm.stitchTile();
+    noLoop();
+
+    if (tilesAllCreated) {
       noLoop();
-   } 
+    }
   }
-  
 }
 
 void keyPressed() {
@@ -278,6 +338,12 @@ void keyPressed() {
 
   if (!makingWang && complete && (key == 'w' || key == 'W')) {
     makingWang = true;
+  }
+
+  // Spacebar
+  if (key == 32) {
+    println("\n");
+    loop();
   }
 }
 

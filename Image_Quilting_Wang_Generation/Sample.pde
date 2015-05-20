@@ -1,6 +1,7 @@
 class Sample {
   PImage source, sample, overlappingLeft, overlappingTop;
   OverlapGraph leftGraph, topGraph;
+  int thisSampleSize, thisXOffset, thisYOffset;
 
   // These help handle right edge and bottom edge tiles that look 
   // for matches in the black offscreen space of the canvas
@@ -9,33 +10,49 @@ class Sample {
 
   // Constructor for initial image quilting
   Sample(PImage _source) {
+    thisSampleSize = sampleSize;
     source = _source;
+    thisXOffset = xOffset;
+    thisYOffset = yOffset;
     createSample();
   }
 
+  // WangTileMaker constructor
+  Sample(PImage _source, int _size) {
+    thisSampleSize = _size;
+    source = _source;
+  }
+
+  // Overridden for Wang tiles...
+  void createSample(int _xOffset, int _yOffset) {
+    thisXOffset = _xOffset;
+    thisYOffset = _yOffset;
+    createSample();
+  }
+
+
   // For use with the initial image quilting
   void createSample() {
-    int sample_x_start = int(random(0, source.width  - sampleSize));
-    int sample_y_start = int(random(0, source.height - sampleSize));
-    sample = source.get(sample_x_start, sample_y_start, sampleSize, sampleSize);
+    //println("Sample.createSample()");
+    int sample_x_start = int(random(0, source.width  - thisSampleSize));
+    int sample_y_start = int(random(0, source.height - thisSampleSize));
+    sample = source.get(sample_x_start, sample_y_start, thisSampleSize, thisSampleSize);
 
     // Used to help determine what percentage of the error we check for overlapping sections.
-    int pixelsRemainingW = width - xOffset;
-    int pixelsRemainingH = height - yOffset;
+    int pixelsRemainingW = width - thisXOffset;
+    int pixelsRemainingH = height - thisYOffset;
 
     // Find the percentage with bounds at 0 and 1.0.
-    percentWOnScreen = max(0, min(1.0, pixelsRemainingW - sampleSize));
-    percentHOnScreen = max(0, min(1.0, pixelsRemainingH - sampleSize));
+    percentWOnScreen = max(0, min(1.0, pixelsRemainingW - thisSampleSize));
+    percentHOnScreen = max(0, min(1.0, pixelsRemainingH - thisSampleSize));
   }
 
-  // Constructor for Wang Tile image quilting - draws from the image on the screen
-  Sample(int _originX, int _originY, int _tileDimension) {
-    sample = get(_originX, _originY, _tileDimension, _tileDimension);
-  }
 
   void placeTile(int _xOffset, int _yOffset) {
+
     boolean success = calculateOverlapCuts();
     while (!success) {
+      println("Failed to succeed at calculateOverlapCuts()");
       createSample();
       success = calculateOverlapCuts();
     }
@@ -84,11 +101,12 @@ class Sample {
           }
         }
         for (int i = 0; i < y; i++) {
-          sample.set(x, i, get(xOffset + x, yOffset + i));
+          sample.set(x, i, get(_xOffset + x, _yOffset + i)); // BUG?
         }
       }
     }
     sample.updatePixels();
+
     image(sample, _xOffset, _yOffset);
   }
 
@@ -96,25 +114,33 @@ class Sample {
   boolean calculateOverlapCuts() {
     // Need to calculate the total error possible for all overlap pixels
     // the determine whether the error represented in 
+    //println("Sample.calculateOverlapCuts()");
 
     int adjustedError, adjustedMaxError;    
 
     if (row == 0 && column > 0) {
       createOverlappingLeft();
       createLeftGraph();
+      
+      // Make sure the top graph is null so that it isn't processed;
+      // Not explicitly setting this to null caused a gnarly bug.
+      topGraph = null;
 
       adjustedError    = int(percentHOnScreen * leftGraph.errorValue);
       adjustedMaxError = int(percentHOnScreen * maxErrorValue);
 
       if (adjustedError > adjustedMaxError) {
-        // println("leftGraph adjustedError: " + adjustedError);
         return false;
       }
+      return true;
     }
 
     if (row > 0 && column == 0) {
       createOverlappingTop();
       createTopGraph();
+      
+      // Make sure the left graph is null so that it isn't processed.
+      leftGraph = null;
 
       adjustedError    = int(percentWOnScreen * topGraph.errorValue);
       adjustedMaxError = int(percentWOnScreen * maxErrorValue);
@@ -123,6 +149,7 @@ class Sample {
         // println("topGraph adjustedError: " + adjustedError);
         return false;
       }
+      return true;
     }
 
     if (row > 0 && column > 0) {
@@ -139,8 +166,6 @@ class Sample {
       int adjustedTopMaxError = int(percentWOnScreen * maxErrorValue); // Problem here?
 
       if (adjustedLeftError > adjustedLeftMaxError || adjustedTopError > adjustedTopMaxError) {
-        // println("leftGraph adjustedError: " + adjustedLeftError);
-        // println("topGraph adjustedError: " + adjustedTopError);
         return false;
       }
     }
@@ -149,13 +174,17 @@ class Sample {
 
 
   void createLeftGraph() {
-    PImage sampleLeft = sample.get(0, 0, sampleOverlap, sample.height);
+    println("createLeftGraph()");
+
+    PImage sampleLeft = sample.get(0, 0, sampleOverlap, sample.height);    
     leftGraph         = new OverlapGraph();
     leftGraph.initLeft(overlappingLeft, sampleLeft);
   }
 
 
   void createTopGraph() {
+    println("createTopGraph()");
+
     PImage sampleTop = sample.get(0, 0, sample.width, sampleOverlap);
     topGraph         = new OverlapGraph();
     topGraph.initTop(overlappingTop, sampleTop);
@@ -167,6 +196,7 @@ class Sample {
   // to run the A-star algorithm to determine the best cut.
 
   void createOverlappingLeft() {
+    println("createOverlappingLeft()");
     overlappingLeft = createImage(sampleOverlap, sample.height, RGB);
     overlappingLeft.loadPixels();
     int pixelIndex = 0;
@@ -174,7 +204,7 @@ class Sample {
     for (int i = 0; i < sample.height; i++) {
       for (int j = 0; j < sampleOverlap; j++) {
         // Get the color and store in an array
-        color c = get(xOffset + j, yOffset + i);
+        color c = get(thisXOffset + j, thisYOffset + i);
         overlappingLeft.pixels[pixelIndex] = c;
         pixelIndex += 1;
       }
@@ -183,13 +213,14 @@ class Sample {
 
   // Same as above, but for use when we have to overlap on the top, too.
   void createOverlappingTop() {
+    println("createOverlappingTop()");
     overlappingTop = createImage(sample.width, sampleOverlap, RGB);
     overlappingTop.loadPixels();
     int pixelIndex = 0;
     for (int i = 0; i < sampleOverlap; i++) {
       for (int j = 0; j < sample.width; j++) {
         // Get the color and store in an array
-        color c = get(xOffset + j, yOffset + i);
+        color c = get(thisXOffset + j, thisYOffset + i);
         overlappingTop.pixels[pixelIndex] = c;
         pixelIndex += 1;
       }
@@ -199,7 +230,7 @@ class Sample {
   // This currently only is is use for debugging purposes
   // Finds where the left and top seams cross
   OverlapNode cornerCross() {
-
+    //println("cornerCross()");
     // Here we find where the paths overlap.
     for (OverlapNode ln : leftGraph.seam) {
       for (OverlapNode tn : topGraph.seam) {
