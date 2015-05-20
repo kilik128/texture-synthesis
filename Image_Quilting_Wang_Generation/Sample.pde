@@ -52,7 +52,7 @@ class Sample {
 
     boolean success = calculateOverlapCuts();
     while (!success) {
-      println("Failed to succeed at calculateOverlapCuts()");
+      // println("Failed to succeed at calculateOverlapCuts()");
       createSample();
       success = calculateOverlapCuts();
     }
@@ -174,7 +174,7 @@ class Sample {
 
 
   void createLeftGraph() {
-    println("createLeftGraph()");
+    // println("createLeftGraph()");
 
     PImage sampleLeft = sample.get(0, 0, sampleOverlap, sample.height);    
     leftGraph         = new OverlapGraph();
@@ -183,7 +183,7 @@ class Sample {
 
 
   void createTopGraph() {
-    println("createTopGraph()");
+    // println("createTopGraph()");
 
     PImage sampleTop = sample.get(0, 0, sample.width, sampleOverlap);
     topGraph         = new OverlapGraph();
@@ -196,7 +196,7 @@ class Sample {
   // to run the A-star algorithm to determine the best cut.
 
   void createOverlappingLeft() {
-    println("createOverlappingLeft()");
+    // println("createOverlappingLeft()");
     overlappingLeft = createImage(sampleOverlap, sample.height, RGB);
     overlappingLeft.loadPixels();
     int pixelIndex = 0;
@@ -213,7 +213,7 @@ class Sample {
 
   // Same as above, but for use when we have to overlap on the top, too.
   void createOverlappingTop() {
-    println("createOverlappingTop()");
+    // println("createOverlappingTop()");
     overlappingTop = createImage(sample.width, sampleOverlap, RGB);
     overlappingTop.loadPixels();
     int pixelIndex = 0;

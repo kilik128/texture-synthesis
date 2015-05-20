@@ -61,6 +61,7 @@ float overlapErrorTolerance = 0.15;
 
 
 // To make Wang tiles after quilting
+String appendedTileName; // Set this below where you set the texture
 int wangColorsTopBottom = 3;
 int wangColorsLeftRight = 3;
 
@@ -78,7 +79,7 @@ int maxWangVariationsPerLeftTopTile = 3;
 
 // What dimension, per side, should the Wang tiles be?
 // The Wang tiles will use the same overlap factor when quilted.
-int wangTileDimension = 64;
+int wangTileDimension = 96;
 
 
 // Error Calculations - don't change these
@@ -143,8 +144,9 @@ void setup() {
   // Set texture1 to gravel and texture2 to gravel
   // For a crazy image, Set texture1 to mars and texture2 to water 
   // and set the error tolerance (above) to 0.5 or so.
-  texture1 = pinkflowers;
-  texture2 = pinkflowers;
+  texture1 = gravel;
+  texture2 = gravel;
+  appendedTileName = "gravel";
 
   // Don't change anything else in setup()
   columns = 1 + width  / (sampleSize - sampleOverlap);
@@ -322,7 +324,7 @@ void iterateWangImageCreation() {
 
   if (iterateWang) {
     wtm.stitchTile();
-    noLoop();
+    frameRate(3);
 
     if (tilesAllCreated) {
       noLoop();

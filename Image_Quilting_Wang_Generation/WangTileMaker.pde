@@ -4,14 +4,17 @@ class WangTileMaker {
   ArrayList<WangColorSample> colorSamplesLR;
   ArrayList<WangColorSample> colorSamplesTB;
 
+  float sampleSizeFactor = 1.1;
+
   ArrayList<WangTile> finalTiles;
 
   ArrayList<String> colors;
+  ArrayList<String> colorHexCodes;
 
   int tilesCreated = 0;
 
   WangTile workingTile;
-  boolean placeLeft, placeTop, placeBottom, placeRight;
+  boolean placeLeft, placeTop, placeBottom, placeRight, captureTile;
 
   WangTileMaker(PImage _sourceImage) {
     sourceImage = _sourceImage;
@@ -24,6 +27,7 @@ class WangTileMaker {
     placeTop    = false;
     placeBottom = false;
     placeRight  = false;
+    captureTile = false;
 
     // This isn't necessary and slows things down but is here for
     // explanatory purposes. We can use colors as sides when debugging.
@@ -39,6 +43,18 @@ class WangTileMaker {
     colors.add("puce");
     colors.add("orange");
     colors.add("magenta");
+
+    colorHexCodes = new ArrayList<String>();
+    colorHexCodes.add("#0000FF");
+    colorHexCodes.add("#FF0000");
+    colorHexCodes.add("#00FF00");
+    colorHexCodes.add("#8B4513");
+    colorHexCodes.add("#800080");
+    colorHexCodes.add("#FFD700");
+    colorHexCodes.add("#333333");
+    colorHexCodes.add("#722F37");
+    colorHexCodes.add("#FF7F00");
+    colorHexCodes.add("#FF00FF");
   }
 
   /*
@@ -95,14 +111,16 @@ class WangTileMaker {
     colorSamplesTB = new ArrayList<WangColorSample>();
 
     for (int i = 0; i < leftRightNum; i++) {
-      WangColorSample wcs = new WangColorSample(safeRotatedSource, colors.get(i), (int)(wangTileDimension*1.5));
+      WangColorSample wcs = new WangColorSample(safeRotatedSource, colors.get(i), (int)(wangTileDimension*sampleSizeFactor));
+      wcs.c = color(unhex("FF" + colorHexCodes.get(i).substring(1)));
       colorSamplesLR.add(wcs);
       println("LeftRight: " + wcs.colorname);
     }
 
     // Strange indexing here is to get the appropriate color name
     for (int i = leftRightNum; i < (leftRightNum + topBottomNum); i++) {
-      WangColorSample wcs = new WangColorSample(safeRotatedSource, colors.get(i), (int)(wangTileDimension*1.5));
+      WangColorSample wcs = new WangColorSample(safeRotatedSource, colors.get(i), (int)(wangTileDimension*sampleSizeFactor));
+      wcs.c = color(unhex("FF" + colorHexCodes.get(i).substring(1)));
       colorSamplesTB.add(wcs);
       println("TopBottom: " + wcs.colorname);
     }
@@ -203,14 +221,17 @@ class WangTileMaker {
   }
 
   void stitchTile() {
-    
+
+    int baselineX = int((width*0.5) -  (wangTileDimension*sampleSizeFactor) + (sampleOverlap*0.5));
+    int baselineY = int((height*0.5) - (wangTileDimension*sampleSizeFactor) + (sampleOverlap*0.5));
+
     // Check if we're done
     if (tilesCreated == finalTiles.size()) {
       tilesAllCreated = true;
       println("Tiles all created!");
       return;
     }
-    
+
     // Initialize
     if (null == workingTile) {
       // Clear the background
@@ -219,74 +240,135 @@ class WangTileMaker {
       // Get a tile reference
       workingTile = finalTiles.get(tilesCreated);
       placeLeft   = true;
-      
-    } else if (null != workingTile && placeLeft == true){
+    } else if (null != workingTile && placeLeft == true) {
       // Move to the next tile.
       background(0);
       workingTile = finalTiles.get(tilesCreated);
     }
 
     if (placeLeft) {
-      println("placeLeft");
-      xOffset   = 0;
-      yOffset   = 0;
+      // println("placeLeft");
+      xOffset   = baselineX;
+      yOffset   = baselineY;
       row    = 0;
       column = 0;
-      
+
       // Upper left doesn't need to stitch
-      workingTile.left.imageSample.createSample(xOffset,yOffset);
+      workingTile.left.imageSample.createSample(xOffset, yOffset);
+      fill(workingTile.left.c);
+      noStroke();
+      rect(xOffset - 10, yOffset - 10, 20, 20);
+      noFill();
       PImage l = workingTile.left.imageSample.sample;
       image(l, xOffset, yOffset);
       placeLeft = false;
       placeTop  = true;
       return;
     }
-    
+
     if (placeTop) {
-      println("placeTop");
-     xOffset = int(wangTileDimension*1.5) - sampleOverlap;
-     yOffset = 0;
-     row     = 0;
-     column  = 1;
-     
-     workingTile.top.imageSample.createSample(xOffset,yOffset);
-     workingTile.top.imageSample.placeTile(xOffset, yOffset);
-     placeTop    = false;
-     placeBottom = true;
-     return;
+      // println("placeTop");
+      xOffset = baselineX + int(wangTileDimension*sampleSizeFactor) - sampleOverlap;
+      yOffset = baselineY;
+      row     = 0;
+      column  = 1;
+
+      workingTile.top.imageSample.createSample(xOffset, yOffset);
+
+      fill(workingTile.top.c);
+      noStroke();
+      rect(xOffset + workingTile.top.imageSample.sample.width - sampleOverlap*0.5 + 5, yOffset - 10, 20, 20);
+      noFill();
+
+
+      workingTile.top.imageSample.placeTile(xOffset, yOffset);
+      placeTop    = false;
+      placeBottom = true;
+      return;
     }
-    
+
     if (placeBottom) {
-      println("placeBottom");
-     xOffset   = 0;
-     yOffset   = int(wangTileDimension*1.5) - sampleOverlap;
-     row    = 1;
-     column = 0;
-     
-     workingTile.bottom.imageSample.createSample(xOffset,yOffset);
-     workingTile.bottom.imageSample.placeTile(xOffset, yOffset);
-     placeBottom = false;
-     placeRight  = true;
-     return;
+      // println("placeBottom");
+      xOffset   = baselineX;
+      yOffset   = baselineY + int(wangTileDimension*sampleSizeFactor) - sampleOverlap;
+      row    = 1;
+      column = 0;
+
+      workingTile.bottom.imageSample.createSample(xOffset, yOffset);
+
+      fill(workingTile.bottom.c);
+      noStroke();
+      rect(xOffset -10, yOffset + workingTile.bottom.imageSample.sample.width - sampleOverlap*0.5 + 5, 20, 20);
+      noFill();
+
+      workingTile.bottom.imageSample.placeTile(xOffset, yOffset);
+      placeBottom = false;
+      placeRight  = true;
+      return;
     }
-    
+
     if (placeRight) {
-      println("placeRight");
-     xOffset   = int(wangTileDimension*1.5) - sampleOverlap;
-     yOffset   = int(wangTileDimension*1.5) - sampleOverlap;
-     row    = 1;
-     column = 1;
-     
-     workingTile.right.imageSample.createSample(xOffset,yOffset);
-     workingTile.right.imageSample.placeTile(xOffset, yOffset);
-     placeRight = false;
-     placeLeft  = true;
-     
-     // PERFORM TILE CREATION HERE!
-     
-     tilesCreated += 1;
-     return;
+      // println("placeRight");
+      xOffset   = baselineX + int(wangTileDimension*sampleSizeFactor) - sampleOverlap;
+      yOffset   = baselineY + int(wangTileDimension*sampleSizeFactor) - sampleOverlap;
+      row    = 1;
+      column = 1;
+
+      workingTile.right.imageSample.createSample(xOffset, yOffset);
+
+      fill(workingTile.right.c);
+      noStroke();
+      rect(xOffset + workingTile.right.imageSample.sample.width - sampleOverlap*0.5 + 5, yOffset + workingTile.right.imageSample.sample.width - sampleOverlap*0.5 + 5, 20, 20);
+      noFill();
+
+      workingTile.right.imageSample.placeTile(xOffset, yOffset);
+      placeRight  = false;
+      captureTile = true;
+      return;
     }
+
+    if (captureTile) {
+      rotateAndCaptureTile();
+      tilesCreated += 1;
+      captureTile = false;
+      placeLeft = true;
+      return;
+    }
+  }
+
+  void rotateAndCaptureTile() {
+    // Get the image
+    int baselineX = int((width*0.5) -  (wangTileDimension*sampleSizeFactor) + (sampleOverlap*0.5)) - 10;
+    int baselineY = int((height*0.5) - (wangTileDimension*sampleSizeFactor) + (sampleOverlap*0.5)) - 10;
+
+    // Get the stitched image
+    PImage stitched = get(baselineX, baselineY, int(wangTileDimension*sampleSizeFactor*2 - sampleOverlap)+20, int(wangTileDimension*sampleSizeFactor*2 - sampleOverlap)+20);
+
+    // Clear the screen, rotate, place the stitched image
+    background(0);
+    pushMatrix();
+    translate(width*0.5, height*0.5);
+    rotate(-PI/4.0);
+    image(stitched, -wangTileDimension*sampleSizeFactor + sampleOverlap*0.5 - 10, -wangTileDimension*sampleSizeFactor + sampleOverlap*0.5 - 10);
+    popMatrix();
+
+    // Capture the Wang Tile. Phew!
+    PImage theMotherFlippinTile = get(int(width*0.5 - wangTileDimension*0.5), int(height*0.5 - wangTileDimension*0.5), wangTileDimension, wangTileDimension);
+
+    // Show where it was on the screen
+    noFill();
+    stroke(255);
+    rect(width*0.5 - wangTileDimension*0.5, height*0.5 - wangTileDimension*0.5, wangTileDimension, wangTileDimension);
+
+    /* If you want to display the actual tile...
+     background(0);
+     image(theMotherFlippinTile,width*0.5 - wangTileDimension*0.5, height*0.5 - wangTileDimension*0.5);
+     */
+
+    // Save the tile   
+    String name = "wangtile_" + appendedTileName + "_" + workingTile.left.colorname + "_" + workingTile.top.colorname + "_" + workingTile.bottom.colorname + "_" + workingTile.right.colorname + ".png";
+
+    theMotherFlippinTile.save(name);
   }
 }
 
